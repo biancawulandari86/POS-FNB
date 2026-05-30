@@ -2,17 +2,17 @@
   "redirects": [
     {
       "source": "/",
-      "destination": "https://script.google.com/macros/s/1_f2PteFTuhodxa6q4tKPdHirRWQzKMg2mKr1WGMwqh3ORgSbuo9bufUA/exec",
+      "destination": "https://script.google.com/macros/s/AKfycbwLlLFmTdR58Lk4XURg3AX4NJ6n848KYV6LGkMR_UH369O5KLdwfpr7Fv3BaSi-sMDY/exec",
       "permanent": false
     },
     {
       "source": "/order",
-      "destination": "https://script.google.com/macros/s/1_f2PteFTuhodxa6q4tKPdHirRWQzKMg2mKr1WGMwqh3ORgSbuo9bufUA/exec?page=order",
+      "destination": "https://script.google.com/macros/s/AKfycbwLlLFmTdR58Lk4XURg3AX4NJ6n848KYV6LGkMR_UH369O5KLdwfpr7Fv3BaSi-sMDY/exec?page=order",
       "permanent": false
     },
     {
       "source": "/order/:meja",
-      "destination": "https://script.google.com/macros/s/1_f2PteFTuhodxa6q4tKPdHirRWQzKMg2mKr1WGMwqh3ORgSbuo9bufUA/exec?page=order&meja=:meja",
+      "destination": "https://script.google.com/macros/s/AKfycbwLlLFmTdR58Lk4XURg3AX4NJ6n848KYV6LGkMR_UH369O5KLdwfpr7Fv3BaSi-sMDY/exec?page=order&meja=:meja",
       "permanent": false
     }
   ]
