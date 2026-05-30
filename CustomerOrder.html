@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pesan Menu - Cafe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'DM Sans', sans-serif; }
+        h1, h2, .display-font { font-family: 'Playfair Display', serif; }
+
+        :root {
+            --brown: #7c4a1e;
+            --brown-light: #c08b5c;
+            --cream: #fdf6ec;
+            --gold: #d4a853;
+            --dark: #1a0e05;
+        }
+
+        body { background: var(--cream); }
+
+        @keyframes slideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes pop { 0%{transform:scale(1)} 40%{transform:scale(1.15)} 100%{transform:scale(1)} }
+        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+        .animate-up { animation: slideUp 0.5s ease both; }
+        .pop { animation: pop 0.3s ease; }
+
+        .hero-bg {
+            background: linear-gradient(160deg, var(--brown) 0%, #3d1e06 100%);
+            position: relative; overflow: hidden;
+        }
+        .hero-bg::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .menu-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            cursor: pointer;
+        }
+        .menu-card:active { transform: scale(0.97); }
+        .menu-card.selected { outline: 3px solid var(--gold); box-shadow: 0 8px 32px rgba(212,168,83,0.25); }
+
+        .cat-pill {
+            padding: 8px 18px;
+            border-radius: 100px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border: 2px solid #e5e5e5;
+            color: #666;
+            transition: all 0.2s;
+            white-space: nowrap;
+            cursor: pointer;
+            background: white;
+        }
+        .cat-pill.active {
+            background: var(--brown);
+            border-color: var(--brown);
+            color: white;
+        }
+
+        .icon-circle {
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem;
+        }
+
+        .cart-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: white;
+            border-top: 1px solid #f0e6d3;
+            padding: 16px 20px;
+            box-shadow: 0 -8px 30px rgba(0,0,0,0.1);
+            z-index: 100;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        .cart-bar.visible { transform: translateY(0); }
+
+        .qty-btn {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            border: 2px solid #e5e5e5;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: white;
+            color: #333;
+        }
+        .qty-btn:hover { border-color: var(--brown); color: var(--brown); }
+
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            display: none; align-items: flex-end; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+
+        .modal-sheet {
+            background: white;
+            border-radius: 28px 28px 0 0;
+            width: 100%;
+            max-width: 640px;
+            padding: 24px;
+            max-height: 85vh;
+            overflow-y: auto;
+            animation: slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1);
+        }
+
+        .order-success {
+            position: fixed; inset: 0;
+            background: linear-gradient(160deg, var(--brown), #3d1e06);
+            z-index: 300;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            animation: fadeIn 0.4s ease;
+        }
+        .order-success.show { display: flex; }
+
+        .toast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: #1a0e05; color: white;
+            padding: 12px 24px; border-radius: 100px;
+            font-size: 0.85rem; font-weight: 500;
+            opacity: 0; transition: all 0.3s;
+            pointer-events: none; z-index: 500;
+            white-space: nowrap;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        .loading-skeleton {
+            background: linear-gradient(90deg, #f0e6d3 25%, #fdf6ec 50%, #f0e6d3 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 12px;
+        }
+
+        .badge-meja {
+            background: var(--gold);
+            color: var(--dark);
+            padding: 4px 14px;
+            border-radius: 100px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d4b896; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-[#fdf6ec] min-h-screen pb-32">
+
+    <!-- HERO HEADER -->
+    <div class="hero-bg text-white px-5 pt-10 pb-8 relative">
+        <div class="relative z-10 animate-up">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <p class="text-[#c08b5c] text-sm font-medium tracking-wider uppercase mb-1">Selamat Datang di</p>
+                    <h1 class="text-3xl font-black display-font" id="nama-cafe">Cafe POS</h1>
+                </div>
+                <div class="text-right">
+                    <p class="text-[#c08b5c] text-xs mb-1">Anda berada di</p>
+                    <span class="badge-meja" id="label-meja">Meja 1</span>
+                </div>
+            </div>
+            <p class="text-[#d4b896] text-sm">Pilih menu favoritmu dan pesan langsung dari sini 🍵</p>
+        </div>
+    </div>
+
+    <!-- SEARCH BAR -->
+    <div class="px-4 -mt-4 mb-4 relative z-10 animate-up" style="animation-delay:0.1s">
+        <div class="bg-white rounded-2xl shadow-lg px-4 py-3 flex items-center gap-3 border border-[#f0e6d3]">
+            <i class="fas fa-search text-[#c08b5c]"></i>
+            <input type="text" id="search-menu" placeholder="Cari nama menu..." 
+                class="flex-1 outline-none text-sm text-gray-700 bg-transparent" 
+                oninput="filterMenu()">
+            <button onclick="document.getElementById('search-menu').value=''; filterMenu();" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- CATEGORY TABS -->
+    <div class="px-4 mb-5 overflow-x-auto animate-up" style="animation-delay:0.15s">
+        <div class="flex gap-2 pb-1" id="cat-tabs">
+            <button onclick="filterKat('semua')" class="cat-pill active" data-kat="semua">
+                <i class="fas fa-th-large mr-1"></i> Semua
+            </button>
+        </div>
+    </div>
+
+    <!-- MENU GRID -->
+    <div class="px-4 animate-up" style="animation-delay:0.2s">
+        <!-- Loading skeleton -->
+        <div id="skeleton-loader" class="grid grid-cols-2 gap-4">
+            <div class="loading-skeleton h-52 rounded-2xl"></div>
+            <div class="loading-skeleton h-52 rounded-2xl"></div>
+            <div class="loading-skeleton h-52 rounded-2xl"></div>
+            <div class="loading-skeleton h-52 rounded-2xl"></div>
+        </div>
+        <div id="menu-grid" class="grid grid-cols-2 gap-4 hidden"></div>
+        <div id="menu-empty" class="hidden text-center py-16 text-gray-400">
+            <i class="fas fa-utensils text-5xl mb-3 opacity-30 block"></i>
+            <p class="font-medium">Menu tidak ditemukan</p>
+        </div>
+    </div>
+
+    <!-- FLOATING CART BAR -->
+    <div class="cart-bar" id="cart-bar">
+        <div class="flex items-center justify-between gap-4 max-w-screen-sm mx-auto">
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:var(--brown)">
+                        <i class="fas fa-shopping-bag text-white"></i>
+                    </div>
+                    <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold" id="cart-count">0</span>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500"><span id="cart-items-count">0</span> item</p>
+                    <p class="font-bold text-gray-800" id="cart-total-mini">Rp 0</p>
+                </div>
+            </div>
+            <button onclick="openCartModal()" 
+                class="flex-1 text-white font-semibold py-3 px-5 rounded-xl flex items-center justify-center gap-2 transition-all btn-press"
+                style="background: linear-gradient(135deg, #c45d1a, #7c4a1e)">
+                <i class="fas fa-eye"></i> Lihat Pesanan
+            </button>
+        </div>
+    </div>
+
+    <!-- CART MODAL -->
+    <div class="modal-overlay" id="modal-cart">
+        <div class="modal-sheet">
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-xl font-bold display-font">Pesanan Kamu</h2>
+                <button onclick="closeCartModal()" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200">
+                    <i class="fas fa-times text-gray-600"></i>
+                </button>
+            </div>
+            
+            <div id="modal-badge-meja" class="flex items-center gap-2 mb-4 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                <i class="fas fa-map-marker-alt text-amber-600"></i>
+                <span class="text-sm text-amber-800 font-medium" id="modal-meja-text">Meja 1</span>
+            </div>
+
+            <div id="cart-list" class="space-y-3 mb-5"></div>
+
+            <div class="bg-[#fdf6ec] rounded-2xl p-4 mb-5 border border-[#f0e6d3]">
+                <div class="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Subtotal</span>
+                    <span id="modal-subtotal" class="font-medium">Rp 0</span>
+                </div>
+                <div class="flex justify-between text-lg font-bold" style="color: var(--brown)">
+                    <span>Total</span>
+                    <span id="modal-total">Rp 0</span>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-sticky-note mr-1 text-[#c08b5c]"></i> Catatan untuk dapur (opsional)
+                </label>
+                <textarea id="order-notes" rows="2" placeholder="Contoh: level pedas, tanpa es, dll..."
+                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-[#c08b5c] text-sm resize-none"></textarea>
+            </div>
+
+            <!-- PILIHAN METODE BAYAR -->
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-credit-card mr-1 text-[#c08b5c]"></i> Metode Pembayaran
+                </label>
+                <div class="grid grid-cols-3 gap-2" id="payment-methods">
+                    <button type="button" onclick="pilihMetodeBayar('cash')" id="btn-pay-cash"
+                        class="pay-method-btn active flex flex-col items-center gap-2 py-3 px-2 rounded-2xl border-2 border-[#c08b5c] bg-[#fff8f0] transition-all">
+                        <i class="fas fa-money-bill-wave text-xl text-[#c08b5c]"></i>
+                        <span class="text-sm font-bold text-[#7c4a1e]">Bayar di Kasir</span>
+                        <span class="text-xs text-gray-400">Cash / Kartu</span>
+                    </button>
+                    <button type="button" onclick="pilihMetodeBayar('transfer')" id="btn-pay-transfer"
+                        class="pay-method-btn flex flex-col items-center gap-2 py-3 px-2 rounded-2xl border-2 border-gray-200 bg-white transition-all">
+                        <i class="fas fa-university text-xl text-gray-400" id="icon-pay-transfer"></i>
+                        <span class="text-sm font-bold text-gray-500" id="label-pay-transfer">Transfer Bank</span>
+                        <span class="text-xs text-gray-400">Transfer</span>
+                    </button>
+                    <button type="button" onclick="pilihMetodeBayar('qris')" id="btn-pay-qris"
+                        class="pay-method-btn flex flex-col items-center gap-2 py-3 px-2 rounded-2xl border-2 border-gray-200 bg-white transition-all">
+                        <i class="fas fa-qrcode text-xl text-gray-400"></i>
+                        <span class="text-sm font-bold text-gray-500">QRIS</span>
+                        <span class="text-xs text-gray-400">Scan QR</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- INFO REKENING (muncul saat pilih transfer) -->
+            <div id="info-transfer-modal" class="hidden mb-4 p-4 rounded-2xl border border-blue-100 bg-blue-50">
+                <p class="text-xs font-bold text-blue-700 mb-2 flex items-center gap-1">
+                    <i class="fas fa-info-circle"></i> Info Rekening / QRIS
+                </p>
+                <div id="transfer-detail-modal" class="space-y-1"></div>
+            </div>
+
+            <button onclick="kirimPesanan()" id="btn-kirim"
+                class="w-full text-white py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                style="background: linear-gradient(135deg, #c45d1a, #7c4a1e)">
+                <i class="fas fa-paper-plane"></i> Kirim Pesanan ke Kasir
+            </button>
+            <p class="text-center text-xs text-gray-400 mt-3" id="info-bayar-footer">Pembayaran dilakukan di kasir</p>
+        </div>
+    </div>
+
+    <!-- ORDER SUCCESS (CASH) -->
+    <div class="order-success" id="order-success">
+        <div class="animate-up px-4" style="animation-delay:0.1s">
+            <div class="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-6 text-5xl">☕</div>
+            <h2 class="text-3xl font-black display-font mb-2">Pesanan Terkirim!</h2>
+            <p class="text-[#d4b896] mb-2">Pesanan kamu sudah diterima oleh kasir</p>
+            <p class="text-[#c08b5c] font-bold text-lg mb-4" id="success-meja">Meja 1</p>
+            <p class="text-sm text-white/70 mb-8">Silakan menunggu — pesananmu segera diproses 🙏</p>
+            <button onclick="resetOrder()"
+                class="px-8 py-3 bg-white/20 hover:bg-white/30 rounded-full text-white font-semibold transition-all">
+                <i class="fas fa-plus mr-2"></i>Pesan Lagi
+            </button>
+        </div>
+    </div>
+
+    <!-- ORDER SUCCESS TRANSFER — layar khusus upload bukti -->
+    <div class="order-success" id="order-success-transfer" style="background:linear-gradient(160deg,#1d4ed8,#1e3a8a);">
+        <div class="w-full max-w-sm px-5 animate-up" style="animation-delay:0.05s; overflow-y:auto; max-height:100vh; padding-top:40px; padding-bottom:40px;">
+
+            <!-- Step 1: Info rekening + belum upload -->
+            <div id="transfer-step-1">
+                <div class="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-4 text-4xl">🏦</div>
+                <h2 class="text-2xl font-black display-font mb-1 text-center">Pesanan Dikirim!</h2>
+                <p class="text-blue-200 text-sm mb-1 text-center" id="transfer-success-meja">Meja 1</p>
+                <p class="text-blue-300 text-xs mb-5 text-center" id="transfer-success-total-label">Total: Rp 0</p>
+
+                <!-- Info Rekening -->
+                <div class="bg-white/15 rounded-2xl p-4 mb-5 border border-white/20 text-left">
+                    <p class="text-white font-bold mb-3 flex items-center gap-2 text-sm">
+                        <i class="fas fa-university"></i> Info Rekening / QRIS
+                    </p>
+                    <div id="transfer-success-rekening" class="space-y-2 text-sm text-white/90">
+                        <p class="text-white/50 text-xs">Memuat info rekening...</p>
+                    </div>
+                </div>
+
+                <!-- Total yang harus dibayar -->
+                <div class="bg-white rounded-2xl p-4 mb-5 text-center">
+                    <p class="text-gray-500 text-xs mb-1">Transfer sebesar</p>
+                    <p class="text-3xl font-black" style="color:#1d4ed8;" id="transfer-success-total">Rp 0</p>
+                </div>
+
+                <!-- Upload bukti -->
+                <p class="text-white font-semibold text-sm mb-2 flex items-center gap-2">
+                    <i class="fas fa-camera"></i> Upload Bukti Transfer
+                </p>
+                <label for="input-bukti-foto" class="block w-full cursor-pointer">
+                    <div id="bukti-preview-area"
+                        class="rounded-2xl border-2 border-dashed border-white/40 bg-white/10 hover:bg-white/20 transition-all flex flex-col items-center justify-center py-8 px-4 mb-4"
+                        style="min-height:140px;">
+                        <i class="fas fa-image text-white/60 text-4xl mb-2" id="bukti-placeholder-icon"></i>
+                        <p class="text-white/70 text-sm" id="bukti-placeholder-text">Ketuk untuk pilih foto</p>
+                        <p class="text-white/40 text-xs mt-1">Format: JPG/PNG, max 5MB</p>
+                        <img id="bukti-preview-img" src="" alt="" class="hidden w-full rounded-xl mt-2 object-contain" style="max-height:200px;">
+                    </div>
+                </label>
+                <input type="file" id="input-bukti-foto" accept="image/*" capture="environment"
+                    class="hidden" onchange="pratinjauBukti(this)">
+
+                <!-- Tombol kirim bukti -->
+                <button id="btn-kirim-bukti" onclick="kirimBuktiFoto()"
+                    class="w-full py-4 rounded-2xl font-bold text-white text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98] mb-3"
+                    style="background:linear-gradient(135deg,#059669,#047857);" disabled>
+                    <i class="fas fa-paper-plane"></i> Kirim Bukti ke Kasir
+                </button>
+                <p class="text-blue-300 text-xs text-center mb-4" id="bukti-upload-status">Pilih foto bukti transfer terlebih dahulu</p>
+
+                <button onclick="resetOrder()"
+                    class="w-full py-3 bg-white/10 hover:bg-white/20 rounded-full text-white/70 text-sm font-medium transition-all">
+                    <i class="fas fa-plus mr-2"></i>Pesan Lagi (skip upload bukti)
+                </button>
+            </div>
+
+            <!-- Step 2: Bukti berhasil dikirim -->
+            <div id="transfer-step-2" class="hidden text-center">
+                <div class="w-20 h-20 rounded-full bg-green-400/30 flex items-center justify-center mx-auto mb-5 text-5xl">✅</div>
+                <h2 class="text-2xl font-black display-font mb-2">Bukti Terkirim!</h2>
+                <p class="text-blue-200 text-sm mb-5">Kasir akan segera memverifikasi pembayaran kamu 🙏</p>
+                <div class="bg-white/15 rounded-2xl p-4 mb-6 text-left border border-white/20">
+                    <p class="text-white/60 text-xs mb-1">Preview Bukti</p>
+                    <img id="bukti-sent-img" src="" alt="" class="w-full rounded-xl object-contain" style="max-height:180px;">
+                </div>
+                <button onclick="resetOrder()"
+                    class="px-8 py-3 bg-white/20 hover:bg-white/30 rounded-full text-white font-semibold transition-all">
+                    <i class="fas fa-plus mr-2"></i>Pesan Lagi
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+    // ============================================
+    // STATE
+    // ============================================
+    // Google Apps Script berjalan di dalam iframe — window.location.search
+    // tidak membaca parameter URL asli browser. Gunakan google.script.url.getLocation()
+    let noMeja = '1';
+    let namaCafe = 'Cafe POS';
+
+    let allMenu = [];
+    let keranjang = [];
+    let activeKat = 'semua';
+    let metodeBayar = 'cash'; // 'cash' | 'transfer' | 'qris'
+    let transferSettings = null; // data rekening dari GAS/localStorage
+    let pesananIdTerakhir = null; // ID pesanan terakhir untuk upload bukti
+    let buktiBase64 = null; // Data base64 foto bukti transfer
+    let buktiMimeType = 'image/jpeg'; // MIME type foto bukti transfer
+    let qrisImageThumbUrl = ''; // URL thumbnail gambar QRIS dari Drive
+    let qrisImageDownloadUrl = ''; // URL download gambar QRIS
+
+    // ============================================
+    // LOAD TRANSFER SETTINGS
+    // ============================================
+    function loadTransferSettings() {
+        google.script.run
+            .withSuccessHandler(data => {
+                if (data && data.aktif) {
+                    transferSettings = data;
+                    applyTransferSettings();
+                }
+            })
+            .withFailureHandler(() => {})
+            .getTransferSettings();
+        // Load QRIS image URL
+        google.script.run
+            .withSuccessHandler(data => {
+                if (data && data.thumbUrl) {
+                    qrisImageThumbUrl = data.thumbUrl;
+                    qrisImageDownloadUrl = data.downloadUrl || '';
+                }
+            })
+            .withFailureHandler(() => {})
+            .getQrisImageUrl();
+    }
+
+    function applyTransferSettings() {
+        if (!transferSettings || !transferSettings.aktif) return;
+        // Tampilkan tombol transfer dengan nama bank
+        const labelEl = document.getElementById('label-pay-transfer');
+        const iconEl = document.getElementById('icon-pay-transfer');
+        if (labelEl) labelEl.textContent = transferSettings.namaBank || 'Transfer Bank';
+        if (iconEl) iconEl.className = 'fas fa-university text-xl text-gray-400';
+    }
+
+    function pilihMetodeBayar(metode) {
+        metodeBayar = metode;
+        document.querySelectorAll('.pay-method-btn').forEach(btn => {
+            btn.classList.remove('active', 'border-[#c08b5c]', 'bg-[#fff8f0]', 'border-blue-500', 'bg-blue-50', 'border-green-500', 'bg-green-50');
+            btn.classList.add('border-gray-200', 'bg-white');
+            btn.querySelector('i').classList.remove('text-[#c08b5c]', 'text-blue-600', 'text-green-600');
+            btn.querySelector('i').classList.add('text-gray-400');
+            btn.querySelector('span').classList.remove('text-[#7c4a1e]', 'text-blue-700', 'text-green-700');
+            btn.querySelector('span').classList.add('text-gray-500');
+        });
+
+        const activeBtn = document.getElementById('btn-pay-' + metode);
+        if (metode === 'cash') {
+            activeBtn.classList.remove('border-gray-200','bg-white');
+            activeBtn.classList.add('border-[#c08b5c]', 'bg-[#fff8f0]');
+            activeBtn.querySelector('i').classList.remove('text-gray-400');
+            activeBtn.querySelector('i').classList.add('text-[#c08b5c]');
+            activeBtn.querySelector('span').classList.remove('text-gray-500');
+            activeBtn.querySelector('span').classList.add('text-[#7c4a1e]');
+            document.getElementById('info-transfer-modal').classList.add('hidden');
+            // Restore default blue panel styling
+            document.getElementById('info-transfer-modal').className = 'hidden mb-4 p-4 rounded-2xl border border-blue-100 bg-blue-50';
+            document.getElementById('info-bayar-footer').textContent = 'Pembayaran dilakukan di kasir';
+            document.getElementById('btn-kirim').innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pesanan ke Kasir';
+        } else if (metode === 'transfer') {
+            activeBtn.classList.remove('border-gray-200','bg-white');
+            activeBtn.classList.add('border-blue-500','bg-blue-50');
+            activeBtn.querySelector('i').classList.remove('text-gray-400');
+            activeBtn.querySelector('i').classList.add('text-blue-600');
+            activeBtn.querySelector('span').classList.remove('text-gray-500');
+            activeBtn.querySelector('span').classList.add('text-blue-700');
+            // Restore blue styling for info panel
+            document.getElementById('info-transfer-modal').className = 'hidden mb-4 p-4 rounded-2xl border border-blue-100 bg-blue-50';
+            showTransferInfoModal();
+            document.getElementById('info-bayar-footer').textContent = 'Transfer sesuai total, lalu tunjukkan bukti ke kasir';
+            document.getElementById('btn-kirim').innerHTML = '<i class="fas fa-arrow-right"></i> Lanjutkan ke Pembayaran';
+        } else if (metode === 'qris') {
+            activeBtn.classList.remove('border-gray-200','bg-white');
+            activeBtn.classList.add('border-green-500','bg-green-50');
+            activeBtn.querySelector('i').classList.remove('text-gray-400');
+            activeBtn.querySelector('i').classList.add('text-green-600');
+            activeBtn.querySelector('span').classList.remove('text-gray-500');
+            activeBtn.querySelector('span').classList.add('text-green-700');
+            showQrisInfoModal();
+            document.getElementById('info-bayar-footer').textContent = 'Scan QRIS, lalu upload bukti pembayaran ke kasir';
+            document.getElementById('btn-kirim').innerHTML = '<i class="fas fa-qrcode"></i> Lanjutkan ke QRIS';
+        }
+    }
+
+    function showTransferInfoModal() {
+        if (!transferSettings || !transferSettings.aktif) {
+            document.getElementById('transfer-detail-modal').innerHTML =
+                '<p class="text-xs text-blue-600">Info rekening belum dikonfigurasi oleh kasir.</p>';
+            document.getElementById('info-transfer-modal').classList.remove('hidden');
+            return;
+        }
+        // Tampilkan hanya info rekening bank (tanpa QRIS)
+        const ts = transferSettings;
+        const labelClass = 'text-xs text-blue-500';
+        const valClass = 'text-sm font-bold text-blue-900';
+        let rows = '';
+        if (ts.namaBank) rows += `<div><span class="${labelClass}">Bank</span><br><span class="${valClass}">${ts.namaBank}</span></div>`;
+        if (ts.noRekening) rows += `<div><span class="${labelClass}">No. Rekening</span><br><span class="${valClass}">${ts.noRekening}</span></div>`;
+        if (ts.atasNama) rows += `<div><span class="${labelClass}">Atas Nama</span><br><span class="${valClass}">${ts.atasNama}</span></div>`;
+        if (ts.catatan) rows += `<div class="mt-1"><span class="${labelClass}">${ts.catatan}</span></div>`;
+        document.getElementById('transfer-detail-modal').innerHTML = rows || '<p class="text-xs text-blue-600">Info rekening belum dikonfigurasi.</p>';
+        document.getElementById('info-transfer-modal').classList.remove('hidden');
+    }
+
+    function showQrisInfoModal() {
+        const qrisUrl = qrisImageThumbUrl || (transferSettings && transferSettings.qrisImageUrl ? transferSettings.qrisImageUrl : '');
+        const dlUrl = qrisImageDownloadUrl || '';
+        let html = '';
+        if (qrisUrl) {
+            const btnBase = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95';
+            html = `
+                <p class="text-xs text-green-600 font-bold mb-2">Scan QRIS di bawah ini:</p>
+                <div class="bg-white rounded-2xl p-3 border border-green-200 mb-2">
+                    <img src="${qrisUrl}" alt="QRIS" class="w-full rounded-xl object-contain mb-3 cursor-pointer" style="max-height:200px;" onclick="bukaQrisFullscreen('${qrisUrl}')">
+                    <div class="flex gap-2 justify-center flex-wrap">
+                        ${dlUrl ? `<a href="${dlUrl}" download="QRIS_Cafe.jpg" class="${btnBase} bg-indigo-600 text-white hover:bg-indigo-700"><i class="fas fa-download"></i> Download</a>` : ''}
+                        <button onclick="bukaQrisFullscreen('${qrisUrl}')" class="${btnBase} bg-green-600 text-white hover:bg-green-700"><i class="fas fa-qrcode"></i> Buka untuk Bayar</button>
+                    </div>
+                </div>`;
+        } else {
+            html = '<p class="text-xs text-green-700">Gambar QRIS belum dikonfigurasi. Hubungi kasir.</p>';
+        }
+        // Reuse info-transfer-modal with green styling
+        document.getElementById('info-transfer-modal').className = 'mb-4 p-4 rounded-2xl border border-green-100 bg-green-50';
+        document.getElementById('transfer-detail-modal').innerHTML = html;
+        document.getElementById('info-transfer-modal').classList.remove('hidden');
+
+        // Restore blue style jika nanti user switch ke transfer
+        document.getElementById('info-transfer-modal')._qrisMode = true;
+    }
+
+    function buildTransferHtml(ts, context) {
+        const labelClass = context === 'modal' ? 'text-xs text-blue-500' : 'text-xs text-white/60';
+        const valClass = context === 'modal' ? 'text-sm font-bold text-blue-900' : 'text-sm font-bold text-white';
+        let rows = '';
+        if (ts.namaBank) rows += `<div><span class="${labelClass}">Bank / QRIS</span><br><span class="${valClass}">${ts.namaBank}</span></div>`;
+        if (ts.noRekening) rows += `<div><span class="${labelClass}">No. Rekening</span><br><span class="${valClass}">${ts.noRekening}</span></div>`;
+        if (ts.atasNama) rows += `<div><span class="${labelClass}">Atas Nama</span><br><span class="${valClass}">${ts.atasNama}</span></div>`;
+        if (ts.catatan) rows += `<div class="mt-1"><span class="${labelClass}">${ts.catatan}</span></div>`;
+
+        // Tambah gambar QRIS + 2 tombol jika ada
+        const qrisUrl = qrisImageThumbUrl || (ts.qrisImageUrl || '');
+        const dlUrl = qrisImageDownloadUrl || '';
+        if (qrisUrl) {
+            const bgCard = context === 'modal' ? 'bg-blue-50 border border-blue-200' : 'bg-white/10 border border-white/20';
+            const btnBase = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95';
+            const btnDownload = context === 'modal'
+                ? `${btnBase} bg-indigo-600 text-white hover:bg-indigo-700`
+                : `${btnBase} bg-white/20 text-white hover:bg-white/30`;
+            const btnBayar = context === 'modal'
+                ? `${btnBase} bg-green-600 text-white hover:bg-green-700`
+                : `${btnBase} bg-green-500/80 text-white hover:bg-green-500`;
+            rows += `
+                <div class="mt-3 ${bgCard} rounded-2xl p-3">
+                    <p class="${labelClass} font-bold mb-2">Gambar QRIS:</p>
+                    <img src="${qrisUrl}" alt="QRIS" class="w-full rounded-xl object-contain mb-3 cursor-pointer" style="max-height:220px;" onclick="bukaQrisFullscreen('${qrisUrl}')">
+                    <div class="flex gap-2 justify-center flex-wrap">
+                        ${dlUrl ? `<a href="${dlUrl}" download="QRIS_Cafe.jpg" class="${btnDownload}"><i class="fas fa-download"></i> Download QRIS</a>` : ''}
+                        <button onclick="bukaQrisFullscreen('${qrisUrl}')" class="${btnBayar}"><i class="fas fa-qrcode"></i> Buka untuk Bayar</button>
+                    </div>
+                </div>`;
+        }
+
+        return rows;
+    }
+
+    // Tampilkan QRIS fullscreen agar mudah di-scan oleh kamera payment
+    function bukaQrisFullscreen(imgUrl) {
+        let overlay = document.getElementById('qris-fullscreen-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'qris-fullscreen-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;';
+            overlay.innerHTML = `
+                <p style="color:#fff;font-size:0.78rem;font-weight:700;margin-bottom:12px;opacity:0.7;text-transform:uppercase;letter-spacing:1px;">Scan QRIS untuk Bayar</p>
+                <img id="qris-fs-img" src="" alt="QRIS" style="max-width:min(90vw,420px);max-height:min(70vh,420px);border-radius:16px;background:white;padding:12px;object-fit:contain;">
+                <div style="margin-top:16px;display:flex;gap:12px;">
+                    <a id="qris-fs-dl" href="" download="QRIS_Cafe.jpg"
+                        style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:rgba(255,255,255,0.2);color:white;border-radius:100px;font-size:0.82rem;font-weight:700;text-decoration:none;">
+                        <i class="fas fa-download"></i> Download
+                    </a>
+                    <button onclick="document.getElementById('qris-fullscreen-overlay').style.display='none'"
+                        style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:rgba(255,255,255,0.15);color:white;border-radius:100px;font-size:0.82rem;font-weight:700;border:none;cursor:pointer;">
+                        <i class="fas fa-times"></i> Tutup
+                    </button>
+                </div>
+            `;
+            overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.style.display='none'; });
+            document.body.appendChild(overlay);
+        }
+        document.getElementById('qris-fs-img').src = imgUrl;
+        const dlLink = document.getElementById('qris-fs-dl');
+        if (dlLink) dlLink.href = qrisImageDownloadUrl || imgUrl;
+        overlay.style.display = 'flex';
+    }
+
+    // ============================================
+    // INIT
+    // ============================================
+    document.addEventListener('DOMContentLoaded', () => {
+        // Baca parameter URL via GAS API — window.location tidak bekerja di iframe GAS
+        google.script.url.getLocation(function(location) {
+            noMeja   = (location.parameter && location.parameter.meja) ? location.parameter.meja : '1';
+            namaCafe = (location.parameter && location.parameter.cafe) ? location.parameter.cafe : 'Cafe POS';
+
+            document.getElementById('nama-cafe').textContent = namaCafe;
+            document.getElementById('label-meja').textContent = 'Meja ' + noMeja;
+            document.getElementById('modal-meja-text').textContent = 'Pesanan untuk Meja ' + noMeja;
+            document.getElementById('success-meja').textContent = 'Meja ' + noMeja;
+            loadMenu();
+            loadTransferSettings();
+        });
+    });
+
+    // ============================================
+    // LOAD MENU FROM GAS
+    // ============================================
+    function loadMenu() {
+        // Panggil GAS backend — gunakan getMenuForCustomer agar
+        // bahan baku / kemasan tidak muncul di halaman pelanggan
+        google.script.run
+            .withSuccessHandler(data => {
+                allMenu = Array.isArray(data) ? data.filter(b => b.stok > 0) : [];
+                buildCategories();
+                renderMenu();
+                document.getElementById('skeleton-loader').classList.add('hidden');
+                document.getElementById('menu-grid').classList.remove('hidden');
+            })
+            .withFailureHandler(err => {
+                console.error(err);
+                document.getElementById('skeleton-loader').classList.add('hidden');
+                document.getElementById('menu-grid').classList.remove('hidden');
+                document.getElementById('menu-empty').classList.remove('hidden');
+            })
+            .getMenuForCustomer();
+    }
+
+    // ============================================
+    // BUILD CATEGORIES
+    // ============================================
+    function buildCategories() {
+        // Ekstrak kategori dari nama menu (ambil kata pertama sebagai kategori)
+        const kategoriSet = new Set();
+        allMenu.forEach(b => {
+            // Ambil dari metadata jika ada, atau parse nama
+            const kat = b.kategori || getKategoriFromNama(b.nama);
+            if (kat) kategoriSet.add(kat);
+        });
+
+        const container = document.getElementById('cat-tabs');
+        // Hapus semua kecuali "Semua"
+        while (container.children.length > 1) container.removeChild(container.lastChild);
+
+        [...kategoriSet].slice(0, 10).forEach(kat => {
+            const btn = document.createElement('button');
+            btn.className = 'cat-pill';
+            btn.setAttribute('data-kat', kat);
+            btn.innerHTML = kat;
+            btn.onclick = () => filterKat(kat);
+            container.appendChild(btn);
+        });
+    }
+
+    function getKategoriFromNama(nama) {
+        // Coba detect kategori dari kata kunci
+        const lower = nama.toLowerCase();
+        if (lower.includes('kopi') || lower.includes('espresso') || lower.includes('latte') || lower.includes('cappuccino') || lower.includes('americano')) return 'Kopi';
+        if (lower.includes('matcha') || lower.includes('teh') || lower.includes('susu') || lower.includes('coklat') || lower.includes('milo')) return 'Minuman';
+        if (lower.includes('soda') || lower.includes('sparkling') || lower.includes('lychee')) return 'Minuman Soda';
+        if (lower.includes('nasi') || lower.includes('mie') || lower.includes('pasta') || lower.includes('burger') || lower.includes('sandwich')) return 'Makanan';
+        if (lower.includes('croissant') || lower.includes('waffle') || lower.includes('pancake') || lower.includes('roti') || lower.includes('toast')) return 'Pastry';
+        if (lower.includes('es krim') || lower.includes('pudding') || lower.includes('crepes') || lower.includes('tiramisu')) return 'Dessert';
+        return null;
+    }
+
+    // ============================================
+    // RENDER MENU
+    // ============================================
+    function renderMenu() {
+        const query = document.getElementById('search-menu').value.toLowerCase();
+        const grid = document.getElementById('menu-grid');
+        const empty = document.getElementById('menu-empty');
+
+        let filtered = allMenu;
+        if (activeKat !== 'semua') {
+            filtered = filtered.filter(b => (b.kategori || getKategoriFromNama(b.nama)) === activeKat);
+        }
+        if (query) {
+            filtered = filtered.filter(b => b.nama.toLowerCase().includes(query));
+        }
+
+        if (filtered.length === 0) {
+            grid.innerHTML = '';
+            empty.classList.remove('hidden');
+            return;
+        }
+        empty.classList.add('hidden');
+
+        // Icon map for visual
+        const iconMap = { 'Kopi': '☕', 'Minuman': '🍵', 'Minuman Soda': '🥤', 'Makanan': '🍽️', 'Pastry': '🥐', 'Dessert': '🍮' };
+        const colorMap = { 'Kopi': '#7c4a1e', 'Minuman': '#2d7a5f', 'Minuman Soda': '#1a5fa8', 'Makanan': '#a83214', 'Pastry': '#b87333', 'Dessert': '#7a3d6e' };
+
+        grid.innerHTML = '';
+        filtered.forEach((barang, i) => {
+            const kat = barang.kategori || getKategoriFromNama(barang.nama) || 'Menu';
+            const icon = iconMap[kat] || '🍴';
+            const color = colorMap[kat] || '#7c4a1e';
+            const inCart = keranjang.find(k => k.id === barang.id);
+            const qty = inCart ? inCart.qty : 0;
+
+            const card = document.createElement('div');
+            card.className = 'menu-card animate-up' + (qty > 0 ? ' selected' : '');
+            card.style.animationDelay = (i * 0.04) + 's';
+            card.innerHTML = `
+                <div class="icon-circle w-full rounded-none" style="height:110px;background:${color}18;border-radius:0;display:flex;align-items:center;justify-content:center;font-size:2.8rem">
+                    ${barang.gambar ? `<img src="${barang.gambar}" class="w-full h-full object-cover" style="border-radius:0" onerror="this.parentElement.innerHTML='${icon}';this.parentElement.style.fontSize='2.8rem'">` : icon}
+                </div>
+                <div class="p-3">
+                    <p class="text-xs font-semibold mb-1" style="color:${color}">${kat}</p>
+                    <p class="text-sm font-bold text-gray-800 mb-1 leading-tight line-clamp-2">${barang.nama}</p>
+                    ${barang.deskripsi ? `<p class="text-xs text-gray-400 mb-1 line-clamp-1">${barang.deskripsi}</p>` : ''}
+                    <p class="text-sm font-bold mb-1" style="color:var(--brown)">${formatRupiah(barang.hargaJual)}</p>
+                    <p class="text-xs text-gray-400 mb-2">Stok: ${barang.stok} ${barang.satuan || ''}</p>
+                    ${qty === 0 ? `
+                        <button onclick="addToCart('${barang.id}')" 
+                            class="w-full py-2 rounded-xl text-white text-sm font-semibold transition-all active:scale-95"
+                            style="background:${color}">
+                            <i class="fas fa-plus mr-1"></i>Tambah
+                        </button>
+                    ` : `
+                        <div class="flex items-center justify-between">
+                            <button onclick="event.stopPropagation(); changeQty('${barang.id}', -1)" class="qty-btn"><i class="fas fa-minus text-xs"></i></button>
+                            <span class="font-bold text-lg" style="color:${color}">${qty}</span>
+                            <button onclick="event.stopPropagation(); changeQty('${barang.id}', 1)" class="qty-btn"><i class="fas fa-plus text-xs"></i></button>
+                        </div>
+                    `}
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function filterKat(kat) {
+        activeKat = kat;
+        document.querySelectorAll('.cat-pill').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-kat') === kat);
+        });
+        renderMenu();
+    }
+
+    function filterMenu() { renderMenu(); }
+
+    // ============================================
+    // CART LOGIC
+    // ============================================
+    function addToCart(id) {
+        const barang = allMenu.find(b => b.id === id);
+        if (!barang) return;
+        const existing = keranjang.find(k => k.id === id);
+        if (existing) {
+            existing.qty++;
+        } else {
+            keranjang.push({ id, nama: barang.nama, harga: barang.hargaJual, qty: 1 });
+        }
+        updateCartUI();
+        renderMenu();
+        showToast('✓ ' + barang.nama.split(' ').slice(0,3).join(' ') + ' ditambahkan');
+    }
+
+    function changeQty(id, delta) {
+        const idx = keranjang.findIndex(k => k.id === id);
+        if (idx === -1) return;
+        keranjang[idx].qty += delta;
+        if (keranjang[idx].qty <= 0) keranjang.splice(idx, 1);
+        updateCartUI();
+        renderMenu();
+    }
+
+    function updateCartUI() {
+        const total = keranjang.reduce((s, k) => s + k.harga * k.qty, 0);
+        const count = keranjang.reduce((s, k) => s + k.qty, 0);
+
+        document.getElementById('cart-count').textContent = count;
+        document.getElementById('cart-items-count').textContent = count;
+        document.getElementById('cart-total-mini').textContent = formatRupiah(total);
+        document.getElementById('modal-subtotal').textContent = formatRupiah(total);
+        document.getElementById('modal-total').textContent = formatRupiah(total);
+
+        const bar = document.getElementById('cart-bar');
+        if (count > 0) bar.classList.add('visible'); else bar.classList.remove('visible');
+    }
+
+    // ============================================
+    // MODAL CART
+    // ============================================
+    function openCartModal() {
+        renderCartList();
+        document.getElementById('modal-cart').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeCartModal() {
+        document.getElementById('modal-cart').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    function renderCartList() {
+        const list = document.getElementById('cart-list');
+        if (keranjang.length === 0) {
+            list.innerHTML = '<p class="text-center text-gray-400 py-6">Keranjang kosong</p>';
+            return;
+        }
+        list.innerHTML = keranjang.map(item => `
+            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-gray-800 truncate">${item.nama}</p>
+                    <p class="text-xs" style="color:var(--brown)">${formatRupiah(item.harga)} × ${item.qty} = <strong>${formatRupiah(item.harga * item.qty)}</strong></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="changeQty('${item.id}', -1); renderCartList(); updateCartUI();" class="qty-btn w-8 h-8 text-xs"><i class="fas fa-minus"></i></button>
+                    <span class="w-6 text-center font-bold">${item.qty}</span>
+                    <button onclick="changeQty('${item.id}', 1); renderCartList(); updateCartUI();" class="qty-btn w-8 h-8 text-xs"><i class="fas fa-plus"></i></button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // ============================================
+    // KIRIM PESANAN
+    // ============================================
+    function kirimPesanan() {
+        if (keranjang.length === 0) return;
+
+        const btn = document.getElementById('btn-kirim');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
+
+        // Guard: pastikan callback tidak jalan ganda (timeout vs sukses/gagal)
+        let sudahSelesai = false;
+
+        const notes = document.getElementById('order-notes').value.trim();
+        const total = keranjang.reduce((s, k) => s + k.harga * k.qty, 0);
+        const listBarang = keranjang.map(k => k.qty > 1 ? `${k.nama} (${k.qty})` : k.nama).join(', ');
+
+        const params = {
+            noMeja   : noMeja,
+            listBarang: listBarang,
+            total    : total,
+            catatan  : notes,
+            metodeBayar: metodeBayar
+        };
+
+        // Timeout guard: jika GAS tidak merespons dalam 25 detik
+        const timeoutId = setTimeout(function() {
+            if (sudahSelesai) return;
+            sudahSelesai = true;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pesanan ke Kasir';
+            showToast('❌ Server tidak merespons, coba lagi');
+        }, 25000);
+
+        google.script.run
+            .withSuccessHandler(function(result) {
+                if (sudahSelesai) return;
+                sudahSelesai = true;
+                clearTimeout(timeoutId);
+                if (result && result.success) {
+                    closeCartModal();
+                    pesananIdTerakhir = result.id; // simpan ID untuk upload bukti
+                    if (metodeBayar === 'transfer' || metodeBayar === 'qris') {
+                        tampilkanSuccessTransfer(result.id, total, listBarang);
+                    } else {
+                        document.getElementById('order-success').classList.add('show');
+                    }
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pesanan ke Kasir';
+                    showToast('❌ ' + (result && result.message ? result.message : 'Gagal mengirim pesanan'));
+                }
+            })
+            .withFailureHandler(function(err) {
+                if (sudahSelesai) return;
+                sudahSelesai = true;
+                clearTimeout(timeoutId);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pesanan ke Kasir';
+                showToast('❌ Koneksi gagal, coba lagi');
+                console.error('kirimPesanan error:', err);
+            })
+            .simpanPesananMeja(params);
+    }
+
+    function resetOrder() {
+        keranjang = [];
+        pesananIdTerakhir = null;
+        buktiBase64 = null;
+        buktiMimeType = 'image/jpeg';
+        document.getElementById('order-success').classList.remove('show');
+        // Sembunyikan layar transfer juga, reset ke step 1
+        const transferScreen = document.getElementById('order-success-transfer');
+        if (transferScreen) transferScreen.classList.remove('show');
+        const step1 = document.getElementById('transfer-step-1');
+        const step2 = document.getElementById('transfer-step-2');
+        if (step1) step1.classList.remove('hidden');
+        if (step2) step2.classList.add('hidden');
+        // Reset tombol kirim pesanan
+        const btnKirim = document.getElementById('btn-kirim');
+        if (btnKirim) { btnKirim.disabled = false; btnKirim.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pesanan ke Kasir'; }
+        document.getElementById('order-notes').value = '';
+        // Reset form bukti
+        const buktiPreviewImg = document.getElementById('bukti-preview-img');
+        const buktiPlaceholderIcon = document.getElementById('bukti-placeholder-icon');
+        const buktiPlaceholderText = document.getElementById('bukti-placeholder-text');
+        const btnKirimBukti = document.getElementById('btn-kirim-bukti');
+        const buktiStatus = document.getElementById('bukti-upload-status');
+        const inputBukti = document.getElementById('input-bukti-foto');
+        if (buktiPreviewImg) { buktiPreviewImg.src = ''; buktiPreviewImg.classList.add('hidden'); }
+        if (buktiPlaceholderIcon) buktiPlaceholderIcon.classList.remove('hidden');
+        if (buktiPlaceholderText) buktiPlaceholderText.textContent = 'Ketuk untuk pilih foto';
+        if (btnKirimBukti) { btnKirimBukti.disabled = true; btnKirimBukti.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Bukti ke Kasir'; }
+        if (buktiStatus) buktiStatus.textContent = 'Pilih foto bukti transfer terlebih dahulu';
+        if (inputBukti) inputBukti.value = '';
+        updateCartUI();
+        // Reload menu dari server agar stok terbaru tampil setelah pesan lagi
+        document.getElementById('menu-grid').classList.add('hidden');
+        document.getElementById('skeleton-loader').classList.remove('hidden');
+        loadMenu();
+    }
+
+    // ============================================
+    // LAYAR SUKSES TRANSFER + UPLOAD BUKTI
+    // ============================================
+    function tampilkanSuccessTransfer(pesananId, total, listBarang) {
+        pesananIdTerakhir = pesananId;
+
+        // Isi info meja dan total
+        const mejaEl = document.getElementById('transfer-success-meja');
+        const totalLabelEl = document.getElementById('transfer-success-total-label');
+        const totalBesarEl = document.getElementById('transfer-success-total');
+        if (mejaEl) mejaEl.textContent = 'Meja ' + noMeja;
+        if (totalLabelEl) totalLabelEl.textContent = 'Total: ' + formatRupiah(total);
+        if (totalBesarEl) totalBesarEl.textContent = formatRupiah(total);
+
+        // Sesuaikan ikon dan judul berdasarkan metode
+        const iconEl = document.querySelector('#transfer-step-1 .w-20.h-20');
+        const headerTitle = document.querySelector('#transfer-step-1 h2');
+        const rekeningTitle = document.querySelector('#transfer-step-1 .bg-white\\/15 p.font-bold');
+        const uploadLabel = document.querySelector('#transfer-step-1 p.text-white.font-semibold');
+        if (metodeBayar === 'qris') {
+            if (iconEl) iconEl.textContent = '📲';
+            if (headerTitle) headerTitle.textContent = 'Pesanan Dikirim!';
+            if (rekeningTitle) rekeningTitle.innerHTML = '<i class="fas fa-qrcode"></i> Scan QRIS untuk Bayar';
+            if (uploadLabel) uploadLabel.innerHTML = '<i class="fas fa-camera"></i> Upload Bukti QRIS';
+        } else {
+            if (iconEl) iconEl.textContent = '🏦';
+            if (headerTitle) headerTitle.textContent = 'Pesanan Dikirim!';
+            if (rekeningTitle) rekeningTitle.innerHTML = '<i class="fas fa-university"></i> Info Rekening / QRIS';
+            if (uploadLabel) uploadLabel.innerHTML = '<i class="fas fa-camera"></i> Upload Bukti Transfer';
+        }
+
+        // Isi info rekening
+        const rekeningEl = document.getElementById('transfer-success-rekening');
+        if (rekeningEl) {
+            if (metodeBayar === 'qris') {
+                // Tampilkan gambar QRIS saja
+                const qrisUrl = qrisImageThumbUrl || (transferSettings && transferSettings.qrisImageUrl ? transferSettings.qrisImageUrl : '');
+                const dlUrl = qrisImageDownloadUrl || '';
+                if (qrisUrl) {
+                    const btnBase = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 bg-white/20 text-white hover:bg-white/30';
+                    const btnBayar = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 bg-green-500/80 text-white hover:bg-green-500';
+                    rekeningEl.innerHTML = `
+                        <div class="bg-white rounded-2xl p-3 mb-2">
+                            <img src="${qrisUrl}" alt="QRIS" class="w-full rounded-xl object-contain mb-3 cursor-pointer" style="max-height:220px;" onclick="bukaQrisFullscreen('${qrisUrl}')">
+                            <div class="flex gap-2 justify-center flex-wrap">
+                                ${dlUrl ? `<a href="${dlUrl}" download="QRIS_Cafe.jpg" class="${btnBase}"><i class="fas fa-download"></i> Download</a>` : ''}
+                                <button onclick="bukaQrisFullscreen('${qrisUrl}')" class="${btnBayar}"><i class="fas fa-qrcode"></i> Buka untuk Bayar</button>
+                            </div>
+                        </div>`;
+                } else {
+                    rekeningEl.innerHTML = '<p class="text-white/50 text-xs">Gambar QRIS belum dikonfigurasi. Hubungi kasir.</p>';
+                }
+            } else if (transferSettings && transferSettings.aktif) {
+                rekeningEl.innerHTML = buildTransferHtml(transferSettings, 'success');
+            } else {
+                rekeningEl.innerHTML = '<p class="text-white/50 text-xs">Info rekening belum dikonfigurasi. Hubungi kasir.</p>';
+            }
+        }
+
+        // Reset ke step 1
+        const step1 = document.getElementById('transfer-step-1');
+        const step2 = document.getElementById('transfer-step-2');
+        if (step1) step1.classList.remove('hidden');
+        if (step2) step2.classList.add('hidden');
+
+        // Tampilkan layar
+        const screen = document.getElementById('order-success-transfer');
+        if (screen) screen.classList.add('show');
+    }
+
+    function pratinjauBukti(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        // Validasi ukuran (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('❌ Ukuran foto maksimal 5MB');
+            input.value = '';
+            return;
+        }
+
+        // Compress dulu sebelum encode — agar tidak melebihi batas GAS
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                // Maksimal lebar/tinggi 1200px agar file kecil
+                const MAX = 1200;
+                let w = img.width, h = img.height;
+                if (w > MAX || h > MAX) {
+                    if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                    else { w = Math.round(w * MAX / h); h = MAX; }
+                }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                // Compress ke JPEG quality 0.75
+                buktiBase64 = canvas.toDataURL('image/jpeg', 0.75);
+                buktiMimeType = 'image/jpeg';
+
+                // Tampilkan preview
+                const previewImg = document.getElementById('bukti-preview-img');
+                const placeholderIcon = document.getElementById('bukti-placeholder-icon');
+                const placeholderText = document.getElementById('bukti-placeholder-text');
+                if (previewImg) { previewImg.src = buktiBase64; previewImg.classList.remove('hidden'); }
+                if (placeholderIcon) placeholderIcon.classList.add('hidden');
+                if (placeholderText) placeholderText.textContent = file.name;
+
+                // Aktifkan tombol kirim
+                const btn = document.getElementById('btn-kirim-bukti');
+                const statusEl = document.getElementById('bukti-upload-status');
+                if (btn) { btn.disabled = false; }
+                if (statusEl) statusEl.textContent = 'Foto siap dikirim ✓';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function kirimBuktiFoto() {
+        if (!buktiBase64 || !pesananIdTerakhir) {
+            showToast('❌ Pilih foto bukti terlebih dahulu');
+            return;
+        }
+
+        const btn = document.getElementById('btn-kirim-bukti');
+        const statusEl = document.getElementById('bukti-upload-status');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...'; }
+        if (statusEl) statusEl.textContent = 'Sedang mengunggah...';
+
+        // Kirim ke GAS — pisahkan dari simpanPesanan agar tidak timeout
+        google.script.run
+            .withSuccessHandler(function(result) {
+                if (result && result.success) {
+                    // Tampilkan step 2 (berhasil)
+                    const step1 = document.getElementById('transfer-step-1');
+                    const step2 = document.getElementById('transfer-step-2');
+                    const sentImg = document.getElementById('bukti-sent-img');
+                    if (step1) step1.classList.add('hidden');
+                    if (step2) step2.classList.remove('hidden');
+                    if (sentImg) sentImg.src = buktiBase64;
+                    showToast('✅ Bukti transfer berhasil dikirim!');
+                } else {
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Bukti ke Kasir'; }
+                    if (statusEl) statusEl.textContent = 'Gagal mengirim, coba lagi';
+                    showToast('❌ ' + (result && result.message ? result.message : 'Gagal kirim bukti'));
+                }
+            })
+            .withFailureHandler(function(err) {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Bukti ke Kasir'; }
+                if (statusEl) statusEl.textContent = 'Koneksi gagal, coba lagi';
+                showToast('❌ Koneksi gagal, coba lagi');
+                console.error('kirimBuktiFoto error:', err);
+            })
+            .simpanBuktiTransfer({
+                pesananId: pesananIdTerakhir,
+                buktiBase64: buktiBase64,
+                mimeType: buktiMimeType
+            });
+    }
+
+    // ============================================
+    // UTILS
+    // ============================================
+    function formatRupiah(n) {
+        return 'Rp ' + parseInt(n||0).toLocaleString('id-ID');
+    }
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // Close modal on overlay click
+    document.getElementById('modal-cart').addEventListener('click', function(e) {
+        if (e.target === this) closeCartModal();
+    });
+    </script>
+</body>
+</html>
