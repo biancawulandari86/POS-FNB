@@ -445,28 +445,34 @@
     let qrisImageDownloadUrl = ''; // URL download gambar QRIS
 
     // ============================================
+    // API Helper — fetch() ke Google Apps Script
+    // ============================================
+
+    // ⚠️ GANTI dengan URL deploy GAS kamu (sama persis dengan yang di Index.html)
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbzfTdEWc6kzIXj9NARcs8t1c89UIxQLprnqKbSlyq1_hTkUJqBooEzjxb0ORKy18NpD/exec';
+
+    function callGAS(action, params) {
+        let url = GAS_URL + '?action=' + encodeURIComponent(action);
+        if (params) url += '&params=' + encodeURIComponent(JSON.stringify(params));
+        return fetch(url).then(function(r) { return r.json(); }).catch(function() { return {}; });
+    }
+
+    // ============================================
     // LOAD TRANSFER SETTINGS
     // ============================================
     function loadTransferSettings() {
-        google.script.run
-            .withSuccessHandler(data => {
-                if (data && data.aktif) {
-                    transferSettings = data;
-                    applyTransferSettings();
-                }
-            })
-            .withFailureHandler(() => {})
-            .getTransferSettings();
-        // Load QRIS image URL
-        google.script.run
-            .withSuccessHandler(data => {
-                if (data && data.thumbUrl) {
-                    qrisImageThumbUrl = data.thumbUrl;
-                    qrisImageDownloadUrl = data.downloadUrl || '';
-                }
-            })
-            .withFailureHandler(() => {})
-            .getQrisImageUrl();
+        callGAS('getTransferSettings').then(function(data) {
+            if (data && data.aktif) {
+                transferSettings = data;
+                applyTransferSettings();
+            }
+        });
+        callGAS('getQrisImageUrl').then(function(data) {
+            if (data && data.thumbUrl) {
+                qrisImageThumbUrl = data.thumbUrl;
+                qrisImageDownloadUrl = data.downloadUrl || '';
+            }
+        });
     }
 
     function applyTransferSettings() {
@@ -640,44 +646,38 @@
     }
 
     // ============================================
-    // INIT
+    // INIT — baca parameter dari URL (window.location, bukan GAS API)
     // ============================================
-    document.addEventListener('DOMContentLoaded', () => {
-        // Baca parameter URL via GAS API — window.location tidak bekerja di iframe GAS
-        google.script.url.getLocation(function(location) {
-            noMeja   = (location.parameter && location.parameter.meja) ? location.parameter.meja : '1';
-            namaCafe = (location.parameter && location.parameter.cafe) ? location.parameter.cafe : 'Cafe POS';
+    document.addEventListener('DOMContentLoaded', function() {
+        // Baca parameter meja & cafe langsung dari URL query string
+        const urlParams = new URLSearchParams(window.location.search);
+        noMeja   = urlParams.get('meja')  || '1';
+        namaCafe = urlParams.get('cafe')  || 'Cafe POS';
 
-            document.getElementById('nama-cafe').textContent = namaCafe;
-            document.getElementById('label-meja').textContent = 'Meja ' + noMeja;
-            document.getElementById('modal-meja-text').textContent = 'Pesanan untuk Meja ' + noMeja;
-            document.getElementById('success-meja').textContent = 'Meja ' + noMeja;
-            loadMenu();
-            loadTransferSettings();
-        });
+        document.getElementById('nama-cafe').textContent = namaCafe;
+        document.getElementById('label-meja').textContent = 'Meja ' + noMeja;
+        document.getElementById('modal-meja-text').textContent = 'Pesanan untuk Meja ' + noMeja;
+        document.getElementById('success-meja').textContent = 'Meja ' + noMeja;
+        loadMenu();
+        loadTransferSettings();
     });
 
     // ============================================
     // LOAD MENU FROM GAS
     // ============================================
     function loadMenu() {
-        // Panggil GAS backend — gunakan getMenuForCustomer agar
-        // bahan baku / kemasan tidak muncul di halaman pelanggan
-        google.script.run
-            .withSuccessHandler(data => {
-                allMenu = Array.isArray(data) ? data.filter(b => b.stok > 0) : [];
-                buildCategories();
-                renderMenu();
-                document.getElementById('skeleton-loader').classList.add('hidden');
-                document.getElementById('menu-grid').classList.remove('hidden');
-            })
-            .withFailureHandler(err => {
-                console.error(err);
-                document.getElementById('skeleton-loader').classList.add('hidden');
-                document.getElementById('menu-grid').classList.remove('hidden');
-                document.getElementById('menu-empty').classList.remove('hidden');
-            })
-            .getMenuForCustomer();
+        callGAS('getMenuForCustomer').then(function(data) {
+            allMenu = Array.isArray(data) ? data.filter(function(b) { return b.stok > 0; }) : [];
+            buildCategories();
+            renderMenu();
+            document.getElementById('skeleton-loader').classList.add('hidden');
+            document.getElementById('menu-grid').classList.remove('hidden');
+        }).catch(function(err) {
+            console.error(err);
+            document.getElementById('skeleton-loader').classList.add('hidden');
+            document.getElementById('menu-grid').classList.remove('hidden');
+            document.getElementById('menu-empty').classList.remove('hidden');
+        });
     }
 
     // ============================================
@@ -880,9 +880,6 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
 
-        // Guard: pastikan callback tidak jalan ganda (timeout vs sukses/gagal)
-        let sudahSelesai = false;
-
         const notes = document.getElementById('order-notes').value.trim();
         const total = keranjang.reduce((s, k) => s + k.harga * k.qty, 0);
         const listBarang = keranjang.map(k => k.qty > 1 ? `${k.nama} (${k.qty})` : k.nama).join(', ');
@@ -895,44 +892,28 @@
             metodeBayar: metodeBayar
         };
 
-        // Timeout guard: jika GAS tidak merespons dalam 25 detik
-        const timeoutId = setTimeout(function() {
-            if (sudahSelesai) return;
-            sudahSelesai = true;
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pesanan ke Kasir';
-            showToast('❌ Server tidak merespons, coba lagi');
-        }, 25000);
-
-        google.script.run
-            .withSuccessHandler(function(result) {
-                if (sudahSelesai) return;
-                sudahSelesai = true;
-                clearTimeout(timeoutId);
+        callGAS('simpanPesananMeja', params)
+            .then(function(result) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pesanan ke Kasir';
                 if (result && result.success) {
                     closeCartModal();
-                    pesananIdTerakhir = result.id; // simpan ID untuk upload bukti
+                    pesananIdTerakhir = result.id;
                     if (metodeBayar === 'transfer' || metodeBayar === 'qris') {
                         tampilkanSuccessTransfer(result.id, total, listBarang);
                     } else {
                         document.getElementById('order-success').classList.add('show');
                     }
                 } else {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pesanan ke Kasir';
                     showToast('❌ ' + (result && result.message ? result.message : 'Gagal mengirim pesanan'));
                 }
             })
-            .withFailureHandler(function(err) {
-                if (sudahSelesai) return;
-                sudahSelesai = true;
-                clearTimeout(timeoutId);
+            .catch(function(err) {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Pesanan ke Kasir';
                 showToast('❌ Koneksi gagal, coba lagi');
                 console.error('kirimPesanan error:', err);
-            })
-            .simpanPesananMeja(params);
+            });
     }
 
     function resetOrder() {
@@ -1102,14 +1083,16 @@
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...'; }
         if (statusEl) statusEl.textContent = 'Sedang mengunggah...';
 
-        // Kirim ke GAS — pisahkan dari simpanPesanan agar tidak timeout
-        google.script.run
-            .withSuccessHandler(function(result) {
+        callGAS('simpanBuktiTransfer', {
+                pesananId: pesananIdTerakhir,
+                buktiBase64: buktiBase64,
+                mimeType: buktiMimeType
+            })
+            .then(function(result) {
                 if (result && result.success) {
-                    // Tampilkan step 2 (berhasil)
-                    const step1 = document.getElementById('transfer-step-1');
-                    const step2 = document.getElementById('transfer-step-2');
-                    const sentImg = document.getElementById('bukti-sent-img');
+                    var step1 = document.getElementById('transfer-step-1');
+                    var step2 = document.getElementById('transfer-step-2');
+                    var sentImg = document.getElementById('bukti-sent-img');
                     if (step1) step1.classList.add('hidden');
                     if (step2) step2.classList.remove('hidden');
                     if (sentImg) sentImg.src = buktiBase64;
@@ -1120,16 +1103,11 @@
                     showToast('❌ ' + (result && result.message ? result.message : 'Gagal kirim bukti'));
                 }
             })
-            .withFailureHandler(function(err) {
+            .catch(function(err) {
                 if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Bukti ke Kasir'; }
                 if (statusEl) statusEl.textContent = 'Koneksi gagal, coba lagi';
                 showToast('❌ Koneksi gagal, coba lagi');
                 console.error('kirimBuktiFoto error:', err);
-            })
-            .simpanBuktiTransfer({
-                pesananId: pesananIdTerakhir,
-                buktiBase64: buktiBase64,
-                mimeType: buktiMimeType
             });
     }
 
