@@ -1470,58 +1470,52 @@
     }
 
     // ============================================
-    // API Calls
+    // API Calls — fetch() ke Google Apps Script
     // ============================================
+
+    // ⚠️ GANTI URL INI dengan URL deploy GAS kamu!
+    // Cara deploy: GAS editor → Deploy → New deployment → Web App
+    //   Execute as: Me | Who has access: Anyone
+    // Contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
+    const GAS_URL = 'GANTI_DENGAN_URL_GAS_KAMU';
+
     function callAPI(functionName, params) {
-        return new Promise(function(resolve, reject) {
-            showLoading(true);
-            var timeout = setTimeout(function() {
+        showLoading(true);
+        let url = GAS_URL + '?action=' + encodeURIComponent(functionName);
+        if (params !== undefined && params !== null) {
+            url += '&params=' + encodeURIComponent(JSON.stringify(params));
+        }
+        return fetch(url)
+            .then(function(res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then(function(data) {
                 showLoading(false);
-                reject(new Error('Timeout: ' + functionName));
-            }, 30000);
-            var runner = google.script.run
-                .withSuccessHandler(function(result) {
-                    clearTimeout(timeout);
-                    showLoading(false);
-                    resolve(result);
-                })
-                .withFailureHandler(function(error) {
-                    clearTimeout(timeout);
-                    showLoading(false);
-                    showToast('Error: ' + ((error && error.message) || 'Unknown error'), 'error');
-                    reject(error);
-                });
-            // Hanya kirim params jika ada
-            if (params !== undefined && params !== null) {
-                runner[functionName](params);
-            } else {
-                runner[functionName]();
-            }
-        });
+                return data;
+            })
+            .catch(function(err) {
+                showLoading(false);
+                showToast('Error: ' + (err.message || 'Koneksi gagal'), 'error');
+                throw err;
+            });
     }
 
-    // Silent API (no loading overlay) untuk polling
+    // Silent API (no loading overlay) — untuk polling
     function callAPISilent(functionName, params) {
-        return new Promise(function(resolve, reject) {
-            var timeout = setTimeout(function() {
-                reject(new Error('Timeout callAPISilent: ' + functionName));
-            }, 30000);
-            var runner = google.script.run
-                .withSuccessHandler(function(result) {
-                    clearTimeout(timeout);
-                    resolve(result);
-                })
-                .withFailureHandler(function(err) {
-                    clearTimeout(timeout);
-                    console.error('callAPISilent error [' + functionName + ']:', err);
-                    reject(err);
-                });
-            if (params !== undefined && params !== null) {
-                runner[functionName](params);
-            } else {
-                runner[functionName]();
-            }
-        });
+        let url = GAS_URL + '?action=' + encodeURIComponent(functionName);
+        if (params !== undefined && params !== null) {
+            url += '&params=' + encodeURIComponent(JSON.stringify(params));
+        }
+        return fetch(url)
+            .then(function(res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .catch(function(err) {
+                console.error('callAPISilent error [' + functionName + ']:', err);
+                throw err;
+            });
     }
 
     // ============================================
@@ -3019,7 +3013,6 @@
     let qrCode = null;
 
     function openModalQR() {
-        // Ambil URL dari GAS
         const jumlahMeja = appSettings.jumlahMeja || 10;
         const select = document.getElementById('qr-select-meja');
         select.innerHTML = '';
@@ -3030,17 +3023,16 @@
             select.appendChild(opt);
         }
 
-        // Ambil URL base dari GAS
-        google.script.run
-            .withSuccessHandler(url => {
-                appUrl = url || '';
-                document.getElementById('qr-base-url').textContent = url || 'Belum dapat URL (deploy dulu)';
+        // Ambil URL meja 1 dari GAS (sekarang berbasis Vercel)
+        callAPISilent('generateUrlMeja', { noMeja: 1 })
+            .then(function(res) {
+                appUrl = (res && res.url) ? res.url : '';
+                document.getElementById('qr-base-url').textContent = appUrl || 'Belum dapat URL (isi VERCEL_BASE_URL di Code.js)';
                 generateQRPreview();
             })
-            .withFailureHandler(() => {
-                document.getElementById('qr-base-url').textContent = 'Tidak dapat mengambil URL. Pastikan script sudah di-deploy.';
-            })
-            .generateUrlMeja(1);
+            .catch(function() {
+                document.getElementById('qr-base-url').textContent = 'Tidak dapat mengambil URL. Periksa koneksi ke GAS.';
+            });
 
         document.getElementById('modal-qr').classList.remove('hidden');
     }
@@ -3049,10 +3041,10 @@
 
     function generateQRPreview() {
         const noMeja = document.getElementById('qr-select-meja').value;
-        const jumlahMeja = appSettings.jumlahMeja || 10;
 
-        google.script.run
-            .withSuccessHandler(url => {
+        callAPISilent('generateUrlMeja', { noMeja: parseInt(noMeja) })
+            .then(function(res) {
+                const url = (res && res.url) ? res.url : '';
                 const container = document.getElementById('qr-preview-container');
                 container.innerHTML = '';
                 document.getElementById('qr-label-meja').textContent = 'Meja ' + noMeja;
@@ -3068,8 +3060,7 @@
                     correctLevel: QRCode.CorrectLevel.H
                 });
             })
-            .withFailureHandler(() => {})
-            .generateUrlMeja(parseInt(noMeja));
+            .catch(function() {});
     }
 
     function downloadQR() {
